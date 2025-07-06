@@ -1,7 +1,6 @@
-import { app, BrowserWindow, Menu, dialog } from 'electron';
+import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 import './server.js';
-import { setDownloadDir } from './config.js';
-
+import { setDownloadDir, getDownloadDir } from './config.js';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -32,8 +31,22 @@ function createWindow() {
               });
             }
           },
-        },
+        }
       ],
+    },
+    {
+      label: 'Open Download Folder',
+      click: () => {
+        const folderPath = getDownloadDir();
+        if (folderPath) {
+          shell.openPath(folderPath);
+        } else {
+          dialog.showMessageBox(win, {
+            type: 'error',
+            message: 'Download folder is not set.',
+          });
+        }
+      }
     }
   ]);
 

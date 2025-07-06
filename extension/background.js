@@ -31,7 +31,7 @@ chrome.webRequest.onHeadersReceived.addListener(
     const disposition = resHeaders["content-disposition"] || "";
 
     const isDownloadable =
-      disposition.includes("attachment") ||
+      // disposition.includes("attachment") ||
       /\.(zip|rar|pdf|mp4|mp3|7z|exe|iso|ts|m3u8)$/i.test(matched.url) || 
       /(video|audio|mpegurl|x-mpegurl|vnd\.apple\.mpegurl)/i.test(contentType);
 
