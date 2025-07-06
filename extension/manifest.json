@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Download Detector",
+  "version": "1.0",
+  "description": "Detects downloadable content and reports it.",
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "storage"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

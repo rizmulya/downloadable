@@ -1,0 +1,33 @@
+{
+  "name": "downloadable",
+  "main": "main.js",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.yourdomain.downloadable",
+    "productName": "Downloadable",
+    "files": [
+      "**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "m3u8-parser": "^7.2.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "author": "github.com/rizmulya"
+}
