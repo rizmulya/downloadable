@@ -35,7 +35,9 @@ chrome.webRequest.onHeadersReceived.addListener(
       /\.(zip|rar|pdf|mp4|mp3|7z|exe|iso|ts|m3u8)$/i.test(matched.url) || 
       /(video|audio|mpegurl|x-mpegurl|vnd\.apple\.mpegurl)/i.test(contentType);
 
-    if (isDownloadable) {
+    const isSegmentedFile = /[\._\-](seg|frag|chunk|part|ts|m4s)[\._\-]?\d{0,5}/i.test(matched.url);
+
+    if (isDownloadable && !isSegmentedFile) {
       const result = {
         url: matched.url,
         contentType,
