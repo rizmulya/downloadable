@@ -1,7 +1,11 @@
+// renderer.js
 let contentTypes = new Set();
 const shownPreviews = new Set();
+let isDownloading = false;
 
 async function fetchList() {
+  if (isDownloading) return;
+
   const res = await fetch('http://localhost:12345/list');
   const items = await res.json();
 
@@ -13,37 +17,33 @@ async function fetchList() {
     !filter || item.contentType?.toLowerCase() === filter.toLowerCase()
   );
 
- filtered.forEach((item, i) => {
-  const li = document.createElement('li');
-  li.className = 'card';
+  filtered.forEach((item, i) => {
+    const li = document.createElement('li');
+    li.className = 'card';
 
-  li.innerHTML = `
-    <div class="url">${item.url}</div>
-    <small>${item.contentType}</small>
-    <small>${formatTime(item.time)}</small>
-    <div class="preview" id="preview-${i}"></div>
-    <div class="actions">
-      <button onclick="download(${i})">Download</button>
-      <button id="preview-btn-${i}">Preview</button>
-    </div>
-  `;
+    li.innerHTML = `
+      <div class="url">${item.url}</div>
+      <small>${item.contentType}</small>
+      <small>${formatTime(item.time)}</small>
+      <div class="preview" id="preview-${i}"></div>
+      <div class="actions">
+        <button id="preview-btn-${i}" style="margin-right: 5px;">Preview</button>
+        <button id="download-btn-${i}" onclick="download(${i})">Download</button>
+      </div>
+      <progress id="progress-${i}" max="100" value="0" style="width: 100%; margin-top: 10px; display: none;"></progress>
+    `;
 
-  ul.appendChild(li);
+    ul.appendChild(li);
 
-  // Restore preview state if already shown
-  if (shownPreviews.has(i)) {
-    const previewBtn = document.getElementById(`preview-btn-${i}`);
-    togglePreview(i, item.contentType, previewBtn);
-  }
+    if (shownPreviews.has(i)) {
+      const previewBtn = document.getElementById(`preview-btn-${i}`);
+      togglePreview(i, item.contentType, previewBtn);
+    }
 
-  // Add toggle handler
-  document.getElementById(`preview-btn-${i}`).onclick = function () {
-    togglePreview(i, item.contentType, this);
-  };
-  
-});
-
-
+    document.getElementById(`preview-btn-${i}`).onclick = function () {
+      togglePreview(i, item.contentType, this);
+    };
+  });
 
   if (contentTypes.size === 0) {
     const select = document.getElementById('filter');
@@ -59,18 +59,17 @@ async function fetchList() {
     });
   }
 }
+
 function togglePreview(id, contentType, button) {
   const container = document.getElementById(`preview-${id}`);
 
   if (shownPreviews.has(id)) {
-    // Hide preview
     container.innerHTML = '';
     shownPreviews.delete(id);
     button.textContent = 'Preview';
     return;
   }
 
-  // Show preview
   const url = `http://localhost:12345/preview/${id}`;
   let preview = '';
 
@@ -89,16 +88,27 @@ function togglePreview(id, contentType, button) {
   button.textContent = 'Close Preview';
 }
 
-
-
 async function download(id) {
-  const button = document.querySelectorAll('.card .actions button')[id];
+  if (isDownloading) return;
+  isDownloading = true;
+
+  const button = document.getElementById(`download-btn-${id}`);
+  const progressBar = document.getElementById(`progress-${id}`);
   const originalText = button.textContent;
 
   button.disabled = true;
   button.textContent = 'Downloading...';
   button.style.backgroundColor = '#95a5a6';
   button.style.cursor = 'not-allowed';
+  progressBar.style.display = 'block';
+
+  let polling = setInterval(async () => {
+    try {
+      const res = await fetch(`http://localhost:12345/progress/${id}`);
+      const json = await res.json();
+      progressBar.value = json.progress || 0;
+    } catch {}
+  }, 500);
 
   try {
     const res = await fetch(`http://localhost:12345/fetch/${id}`, {
@@ -112,13 +122,16 @@ async function download(id) {
   } catch (err) {
     alert(err.message);
   } finally {
+    clearInterval(polling);
     button.disabled = false;
     button.textContent = originalText;
     button.style.backgroundColor = '#3498db';
     button.style.cursor = 'pointer';
+    progressBar.style.display = 'none';
+    progressBar.value = 0;
+    isDownloading = false;
   }
 }
-
 
 async function reset() {
   const res = await fetch('http://localhost:12345/reset');
@@ -129,7 +142,6 @@ async function reset() {
   }
 }
 
-
 function formatTime(isoString) {
   const date = new Date(isoString);
   return date.toLocaleString('id-ID', {
@@ -139,7 +151,7 @@ function formatTime(isoString) {
 }
 
 setInterval(() => {
-  if (shownPreviews.size === 0) {
+  if (shownPreviews.size === 0 && !isDownloading) {
     fetchList();
   }
 }, 2000);

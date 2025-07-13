@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import fs from 'fs';
 import fetch from 'node-fetch';
@@ -26,6 +27,7 @@ if (fs.existsSync(DOWNLOADABLES_PATH)) {
     console.error("Failed:", err);
   }
 }
+const progressMap = new Map();
 
 function saveDownloadAbles() {
   fs.writeFileSync(DOWNLOADABLES_PATH, JSON.stringify(downloadAbles, null, 2));
@@ -51,9 +53,7 @@ app.get('/reset', (req, res) => {
   res.send("OK");
 });
 
-async function downloadM3U8(m3u8Url, headers, outputPath) {
-  console.log("Start M3U8 download:", m3u8Url);
-
+async function downloadM3U8(m3u8Url, headers, outputPath, id) {
   const res = await fetch(m3u8Url, { headers });
   const m3u8Text = await res.text();
 
@@ -76,12 +76,14 @@ async function downloadM3U8(m3u8Url, headers, outputPath) {
     const segmentUrl = new URL(segments[i].uri, baseUrl).toString();
     const segPath = path.join(tmpDir, `seg_${i}.m4s`);
 
-    console.log(`Segment ${i + 1}/${segments.length}: ${segmentUrl}`);
+    // console.log(`Segment ${i + 1}/${segments.length}: ${segmentUrl}`);
     const segRes = await fetch(segmentUrl, { headers });
     if (!segRes.ok) throw new Error(`Failed segment ${i}: ${segmentUrl}`);
     const segBuffer = await segRes.buffer();
     fs.writeFileSync(segPath, segBuffer);
     segmentPaths.push(segPath);
+
+    progressMap.set(id, { progress: Math.floor(((i + 1) / segments.length) * 100), done: false });
   }
 
   fs.writeFileSync(listPath, segmentPaths.map(p => `file '${p}'`).join('\n'));
@@ -92,19 +94,21 @@ async function downloadM3U8(m3u8Url, headers, outputPath) {
       .inputOptions(['-f', 'concat', '-safe', '0'])
       .outputOptions(['-c', 'copy'])
       .output(outputPath)
-      .on('end', resolve)
+      .on('end', () => {
+        progressMap.set(id, { progress: 100, done: true });
+        resolve();
+      })
       .on('error', reject)
       .run();
   });
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
-
-  console.log(`Video saved to ${outputPath}`);
 }
 
 // Download handler
 app.post('/fetch/:id', async (req, res) => {
-  const file = downloadAbles[req.params.id];
+  const id = req.params.id;
+  const file = downloadAbles[id];
   if (!file) return res.status(404).send("Not found");
 
   const nameFromDisposition = file.disposition?.match(/filename="?([^"\n]+)"?/)?.[1];
@@ -117,25 +121,46 @@ app.post('/fetch/:id', async (req, res) => {
   const filename = path.basename(outPath);
 
   try {
+    progressMap.set(id, { progress: 0, done: false });
+
     if (file.url.includes(".m3u8") || file.contentType?.includes("mpegurl")) {
-      await downloadM3U8(file.url, file.headers, outPath);
+      await downloadM3U8(file.url, file.headers, outPath, id);
     } else {
       const response = await fetch(file.url, { headers: file.headers });
       if (!response.ok) throw new Error("Failed to download");
 
+      const total = parseInt(response.headers.get('content-length'));
+      let loaded = 0;
+
       const fileStream = fs.createWriteStream(outPath);
+      response.body.on("data", chunk => {
+        loaded += chunk.length;
+        if (total) {
+          progressMap.set(id, { progress: Math.floor((loaded / total) * 100), done: false });
+        }
+      });
+
       await new Promise((resolve, reject) => {
         response.body.pipe(fileStream);
         response.body.on("error", reject);
-        fileStream.on("finish", resolve);
+        fileStream.on("finish", () => {
+          progressMap.set(id, { progress: 100, done: true });
+          resolve();
+        });
       });
     }
 
     res.send("Downloaded to: " + filename);
   } catch (err) {
     console.error("Error downloading:", err);
+    progressMap.delete(id);
     res.status(500).send("Download failed");
   }
+});
+
+app.get('/progress/:id', (req, res) => {
+  const data = progressMap.get(req.params.id) || { progress: 0, done: false };
+  res.json(data);
 });
 
 function getUniqueFilename(dir, base, ext) {
