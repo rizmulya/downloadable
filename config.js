@@ -16,7 +16,7 @@ function loadConfig() {
 }
 
 function saveConfig(data) {
-  fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
+  fs.writeFileSync(configPath, JSON.stringify(data));
 }
 
 function getDownloadDir() {

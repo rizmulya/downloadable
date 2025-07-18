@@ -77,9 +77,9 @@ function togglePreview(id, contentType, button) {
   let preview = '';
 
   if (contentType.startsWith('image/')) {
-    preview = `<img src="${url}" style="max-width:100%; max-height:200px; border-radius:8px;" />`;
+    preview = `<img src="${url}" style="max-width:100%; border-radius:8px;" />`;
   } else if (contentType.startsWith('video/')) {
-    preview = `<video src="${url}" controls style="width:100%; max-height:200px; border-radius:8px;"></video>`;
+    preview = `<video src="${url}" controls style="width:100%; border-radius:8px;"></video>`;
   } else if (contentType.startsWith('audio/')) {
     preview = `<audio src="${url}" controls style="width:100%;"></audio>`;
   } else {

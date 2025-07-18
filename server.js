@@ -31,7 +31,8 @@ if (fs.existsSync(DOWNLOADABLES_PATH)) {
 const progressMap = new Map();
 
 function saveDownloadAbles() {
-  fs.writeFileSync(DOWNLOADABLES_PATH, JSON.stringify(downloadAbles, null, 2));
+  fs.writeFileSync(DOWNLOADABLES_PATH, JSON.stringify(downloadAbles));
+  // fs.writeFileSync(DOWNLOADABLES_PATH, JSON.stringify(downloadAbles, null, 2));
 }
 
 // 
