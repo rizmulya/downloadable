@@ -21,6 +21,9 @@ async function fetchList() {
     const li = document.createElement('li');
     li.className = 'card';
 
+  const fileName = item.disposition?.match(/filename="?([^"\n]+)"?/)?.[1] ||
+                 item.url.split('/').pop().split('?')[0];
+
     li.innerHTML = `
       <div class="url">${item.url}</div>
       <small>${item.contentType}</small>
@@ -28,7 +31,7 @@ async function fetchList() {
       <div class="preview" id="preview-${i}"></div>
       <div class="actions">
         <button id="preview-btn-${i}" style="margin-right: 5px;">Preview</button>
-        <button id="download-btn-${i}" onclick="download(${i})">Download</button>
+        <button id="download-btn-${i}" onclick="download(${i}, '${fileName}')">Download</button>
       </div>
       <progress id="progress-${i}" max="100" value="0" style="width: 100%; margin-top: 10px; display: none;"></progress>
     `;
@@ -88,9 +91,17 @@ function togglePreview(id, contentType, button) {
   button.textContent = 'Close Preview';
 }
 
-async function download(id) {
+async function download(id, fileName) {
   if (isDownloading) return;
   isDownloading = true;
+
+  try {
+    fileName = await showPrompt(fileName);
+    if (!fileName) throw new Error("Download canceled.");
+  } catch (err) {
+    isDownloading = false;
+    return;
+  }
 
   const button = document.getElementById(`download-btn-${id}`);
   const progressBar = document.getElementById(`progress-${id}`);
@@ -113,6 +124,10 @@ async function download(id) {
   try {
     const res = await fetch(`http://localhost:12345/fetch/${id}`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: fileName || null })
     });
 
     const text = await res.text();
@@ -147,6 +162,21 @@ function formatTime(isoString) {
   return date.toLocaleString('id-ID', {
     dateStyle: 'medium',
     timeStyle: 'medium',
+  });
+}
+
+function showPrompt(defaultValue) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('prompt-modal');
+    const input = document.getElementById('prompt-input');
+    modal.style.display = 'block';
+    input.value = defaultValue || '';
+    input.focus();
+
+    window.closePrompt = (confirmed) => {
+      modal.style.display = 'none';
+      resolve(confirmed ? input.value : null);
+    };
   });
 }
 
