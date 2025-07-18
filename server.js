@@ -105,6 +105,16 @@ async function downloadM3U8(m3u8Url, headers, outputPath, id) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+function parseHeaders(headers = {}) {
+  const normalized = { ...headers };
+  for (const key in normalized) {
+    if (key.toLowerCase() === 'range') {
+      normalized[key] = 'bytes=0-';
+    }
+  }
+  return normalized;
+}
+
 // Download handler
 app.post('/fetch/:id', async (req, res) => {
   const id = req.params.id;
@@ -124,9 +134,9 @@ app.post('/fetch/:id', async (req, res) => {
     progressMap.set(id, { progress: 0, done: false });
 
     if (file.url.includes(".m3u8") || file.contentType?.includes("mpegurl")) {
-      await downloadM3U8(file.url, file.headers, outPath, id);
+      await downloadM3U8(file.url, parseHeaders(file.headers), outPath, id);
     } else {
-      const response = await fetch(file.url, { headers: file.headers });
+      const response = await fetch(file.url, { headers: parseHeaders(file.headers) });
       if (!response.ok) throw new Error("Failed to download");
 
       const total = parseInt(response.headers.get('content-length'));
@@ -183,7 +193,7 @@ app.get('/preview/:id', async (req, res) => {
 
   try {
     const response = await fetch(file.url, {
-      headers: file.headers
+      headers: parseHeaders(file.headers)
     });
 
     if (!response.ok) throw new Error("Failed to fetch preview");
