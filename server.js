@@ -4,13 +4,9 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 import path from 'path';
 
-import ffmpegPath from 'ffmpeg-static';
-import ffmpeg from 'fluent-ffmpeg';
-
 import { getDownloadDir, getDownloadablesPath } from './config.js';
-import { downloadM3U8, parseHeaders, getUniqueFilename } from './utils.js';
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+import { downloadM3U8, parseHeaders, getUniqueFilename, progressMap } from './utils.js';
 
 const app = express();
 const PORT = 12345;
@@ -28,7 +24,6 @@ if (fs.existsSync(DOWNLOADABLES_PATH)) {
     console.error("Failed:", err);
   }
 }
-const progressMap = new Map();
 
 function saveDownloadAbles() {
   fs.writeFileSync(DOWNLOADABLES_PATH, JSON.stringify(downloadAbles));
@@ -107,7 +102,7 @@ app.post('/fetch/:id', async (req, res) => {
   } catch (err) {
     console.error("Error downloading:", err);
     progressMap.delete(id);
-    res.status(500).send("Download failed");
+    res.status(500).send(err && err.message ? err.message : String(err));
   }
 });
 

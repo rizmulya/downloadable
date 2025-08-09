@@ -25,8 +25,8 @@ async function fetchList() {
                  item.url.split('/').pop().split('?')[0];
 
     li.innerHTML = `
-      <div class="url">${item.url}</div>
-      <small>${item.contentType}</small>
+      <div class="url" onclick="copyToClipboard('${item.url.replace(/'/g, "\\'")}')">${item.url}</div>
+      <small onclick='copyToClipboard(${JSON.stringify(JSON.stringify(item.headers))})'>${item.contentType}</small>
       <small>${formatTime(item.time)}</small>
       <div class="preview" id="preview-${i}"></div>
       <div class="actions">
@@ -61,6 +61,20 @@ async function fetchList() {
       }
     });
   }
+}
+
+function copyToClipboard(value) {
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === 'object' && parsed !== null) {
+      if (parsed.range === 'bytes=196608-') {
+        parsed.range = 'bytes=0-';
+      }
+      value = JSON.stringify(parsed, null, 2);
+    }
+  } catch (e) {}
+
+  navigator.clipboard.writeText(value).catch(console.error);
 }
 
 function togglePreview(id, contentType, button) {

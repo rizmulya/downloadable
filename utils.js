@@ -5,6 +5,13 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 
+import ffmpegPath from 'ffmpeg-static';
+import ffmpeg from 'fluent-ffmpeg';
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+const progressMap = new Map();
+
 function parseHeaders(headers = {}) {
   const normalized = { ...headers };
   for (const key in normalized) {
@@ -81,4 +88,4 @@ function getUniqueFilename(dir, base, ext) {
   return fullPath;
 }
 
-export { downloadM3U8, parseHeaders, getUniqueFilename };
+export { downloadM3U8, parseHeaders, getUniqueFilename, progressMap };
